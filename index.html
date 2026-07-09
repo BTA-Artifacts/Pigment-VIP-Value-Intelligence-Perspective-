@@ -704,22 +704,45 @@ function mmk(tag,attrs){const e=document.createElementNS(NS,tag);Object.entries(
 function mmktxt(x,y,s,fs,fw,fill){const t=document.createElementNS(NS,'text');t.setAttribute('x',x);t.setAttribute('y',y);t.setAttribute('text-anchor','middle');t.setAttribute('dominant-baseline','middle');t.setAttribute('font-size',fs);t.setAttribute('font-weight',fw);t.setAttribute('fill',fill);t.textContent=s;return t;}
 
 function mf(btn,f){
-  mapFilt=f;
-  document.querySelectorAll('.mfb').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  if(f!=='all'){
-    // Add to selection (allow multi-select via filter buttons)
-    mapSel=f;
-    selected.add(f);
-    const card=document.querySelector('.c-'+f);
-    if(card) card.classList.add('active');
-    openMapPanel(f);
-  } else {
-    // 'All pairings' — clear everything in both views
-    mapSel=null;
+  if(f==='all'){
+    // Clear everything in both views
+    mapSel=null; mapFilt='all';
     selected.clear();
     document.querySelectorAll('.pairing-card').forEach(c=>c.classList.remove('active'));
     document.getElementById('mapPanel').style.display='none';
+    document.querySelectorAll('.mfb').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+    drawMap();
+    return;
+  }
+  // Toggle this pairing in/out of selection
+  if(selected.has(f)){
+    // Deselect
+    selected.delete(f);
+    btn.classList.remove('on');
+    const card=document.querySelector('.c-'+f);
+    if(card) card.classList.remove('active');
+    // If nothing left selected, revert to all
+    if(selected.size===0){
+      mapSel=null; mapFilt='all';
+      document.getElementById('mapPanel').style.display='none';
+      document.querySelector('.mfb[data-f="all"]').classList.add('on');
+    } else {
+      // Show panel for most recently selected
+      mapSel=Array.from(selected).slice(-1)[0];
+      mapFilt='all';
+      openMapPanel(mapSel);
+    }
+  } else {
+    // Select — add to set
+    selected.add(f);
+    btn.classList.add('on');
+    // Remove 'all' button highlight since we now have specific selections
+    document.querySelector('.mfb[data-f="all"]').classList.remove('on');
+    const card=document.querySelector('.c-'+f);
+    if(card) card.classList.add('active');
+    mapSel=f; mapFilt='all';
+    openMapPanel(f);
   }
   drawMap();
 }
@@ -777,8 +800,8 @@ function drawMap(){
   pairs.forEach(({k,a,b})=>{
     const e=MDATA[k];
     const focused=mapFilt==='all'||mapFilt===k;
-    // isSel = either this arc is the single mapSel, OR it's in the pairings selected Set
-    const isSel=mapSel===k||(mapSel===null&&selected.has(k));
+    // isSel = this arc is in the selected Set (single or multi)
+    const isSel=selected.has(k);
     const[x1,y1]=mup(a),[x2,y2]=mup(b);
     const mx=(x1+x2)/2,my=(y1+y2)/2;
     const dx=MCX-mx,dy=MCY-my;
